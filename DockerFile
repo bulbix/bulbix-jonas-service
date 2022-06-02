@@ -1,0 +1,20 @@
+# VERSION  0.1
+
+FROM python:2.7.17-alpine
+LABEL Fernando Prado
+
+RUN  apk update && apk upgrade
+
+#Cambiar Fecha a Los Angeles
+RUN  apk add -U tzdata
+RUN  cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
+
+RUN pip install flask request requests
+
+COPY webhook.py .
+
+ENTRYPOINT ["python"]
+CMD ["webhook.py"]
+
+
+EXPOSE 5000
