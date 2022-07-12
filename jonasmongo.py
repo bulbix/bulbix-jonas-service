@@ -4,27 +4,31 @@ import uuid
 from datetime import datetime
 
 from bson import ObjectId
-from flask_pymongo import PyMongo
+from pymongo import MongoClient
+from models import JonasBook
 
 
 class JonasMongo:
-    def __init__(self, app=None):
-        app.config["MONGO_URI"] = "mongodb://jonas:jonas123@localhost:27017/jonas?authSource=admin"
-        mongodb_client = PyMongo(app)
+    def __init__(self):
+        mongodb_client = MongoClient("mongodb://jonas:jonas123@localhost:27017/jonas?authSource=admin")
         self.db = mongodb_client.db
 
-    def upsert_book(self, request):
-        shelf = self.db.shelf.find_one({"number": request['number']}, {})
+    def upsert_book(self, book_request: JonasBook):
+        shelf = self.db.shelf.find_one({"number": book_request.number}, {})
         print(shelf)
+        request = book_request.dict()
         book = {x: request[x] for x in request}
+        del book["number"]
         book['uuid'] = str(uuid.uuid4())
         book['dateCreated'] = datetime.now()
         if shelf is None:
-            self.db.shelf.insert_one({'number': request['number'], 'books': [book]})
+            self.db.shelf.insert_one({'number': book_request.number, 'books': [book]})
         else:
-            self.db.shelf.update({"number": request['number']}, {"$push": {'books': book}})
+            self.db.shelf.update_one({"number": book_request.number}, {"$push": {'books': book}})
 
     def search_book(self, title, author):
+        if len(title) == 0 and len(author) == 0:
+            return []
         rgx1 = re.compile(f'.*{title}.*', re.IGNORECASE)  # compile the regex
         rgx2 = re.compile(f'.*{author}.*', re.IGNORECASE)
         books = self.db.shelf.aggregate(
@@ -33,7 +37,7 @@ class JonasMongo:
                            "author": "$books.author", "level": "$books.level", "section": "$books.section"}}])
         books = JSONEncoder().encode(list(books))
         print(books)
-        return books
+        return json.loads(books)
 
 
 class JSONEncoder(json.JSONEncoder):

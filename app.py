@@ -1,36 +1,51 @@
 from jonasmongo import JonasMongo
+from fastapi import FastAPI, Query, Body
+from models import JonasBook
+from typing import Optional
 import requests
-from flask_cors import CORS, cross_origin
-from flask import Flask, request, jsonify
+import uvicorn
+from fastapi.middleware.cors import CORSMiddleware
 
-app = Flask(__name__)
-cors = CORS(app)
-app.config['CORS_HEADERS'] = 'Content-Type'
-jonasmongo = JonasMongo(app)
+app = FastAPI()
+
+origins = [
+    "http://localhost:3000"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+jonasmongo = JonasMongo()
 
 
-@app.route("/add_book", methods=['POST'])
-@cross_origin()
-def add_book():
-    content = request.json
-    jonasmongo.upsert_book(content)
-    return jsonify(message="success")
+@app.post("/add_book")
+def add_book(book: JonasBook = Body(...)):
+    jonasmongo.upsert_book(book)
+    return {"message": "success"}
 
 
-@app.route("/search_book", methods=['GET'])
-@cross_origin()
-def search_book():
-    result = jonasmongo.search_book(request.args.get('title'), request.args.get('author'))
+@app.get("/search_book")
+def search_book(
+    title: Optional[str] = Query(None, max_length=50),
+    author: Optional[str] = Query(None, max_length=50)
+):
+    result = jonasmongo.search_book(title, author)
     return result
 
 
-@app.route("/consult_isbn", methods=['GET'])
-@cross_origin()
-def consult_isbn():
-    h = {'Authorization': 'xxxx'}
-    resp = requests.get(f"https://api2.isbndb.com/book/{request.args.get('isbn')}", headers=h)
+@app.get("/consult_isbn")
+def consult_isbn(
+    isbn: Optional[str] = Query(..., min_length=1, max_length=50)
+):
+    h = {'Authorization': '47951_7a589993060668ed64758de54555018c'}
+    resp = requests.get(f"https://api2.isbndb.com/book/{isbn}", headers=h)
     return resp.json()
 
 
-if __name__ == '__main__':
-    app.run()
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
