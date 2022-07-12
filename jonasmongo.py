@@ -1,18 +1,10 @@
-import datetime
-
-from flask_pymongo import PyMongo
-import re
 import json
-from bson import ObjectId
+import re
 import uuid
+from datetime import datetime
 
-
-class JSONEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, ObjectId):
-            return str(o)
-
-        return json.JSONEncoder.default(self, o)
+from bson import ObjectId
+from flask_pymongo import PyMongo
 
 
 class JonasMongo:
@@ -24,9 +16,9 @@ class JonasMongo:
     def upsert_book(self, request):
         shelf = self.db.shelf.find_one({"number": request['number']}, {})
         print(shelf)
-
-        book = {'uuid': str(uuid.uuid4()), 'title': request['title'], 'author': request['author'],
-                'sold': request['sold'], 'level': request['level'], 'section': request['section']}
+        book = {x: request[x] for x in request}
+        book['uuid'] = str(uuid.uuid4())
+        book['dateCreated'] = datetime.now()
         if shelf is None:
             self.db.shelf.insert_one({'number': request['number'], 'books': [book]})
         else:
@@ -38,7 +30,15 @@ class JonasMongo:
         books = self.db.shelf.aggregate(
             [{"$unwind": "$books"}, {"$match": {"$and": [{"books.title": rgx1}, {"books.author": rgx2}]}},
              {'$project': {'id': '$books.uuid', 'number': '$number', "title": "$books.title",
-                           "author": "$books.author","level":"$books.level", "section":"$books.section"}}])
+                           "author": "$books.author", "level": "$books.level", "section": "$books.section"}}])
         books = JSONEncoder().encode(list(books))
         print(books)
         return books
+
+
+class JSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, ObjectId):
+            return str(o)
+
+        return json.JSONEncoder.default(self, o)
