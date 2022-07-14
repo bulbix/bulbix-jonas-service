@@ -10,7 +10,8 @@ import os
 app = FastAPI()
 
 origins = [
-    "http://localhost:3000"
+    "http://localhost:3000",
+    "https://bulbix-jonas-web.herokuapp.com"
 ]
 
 app.add_middleware(
