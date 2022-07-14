@@ -5,6 +5,7 @@ from typing import Optional
 import requests
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
+import os
 
 app = FastAPI()
 
@@ -31,10 +32,9 @@ def add_book(book: JonasBook = Body(...)):
 
 @app.get("/search_book")
 def search_book(
-    title: Optional[str] = Query(None, max_length=50),
-    author: Optional[str] = Query(None, max_length=50)
+    q: Optional[str] = Query(None, max_length=50)
 ):
-    result = jonasmongo.search_book(title, author)
+    result = jonasmongo.search_book(q)
     return result
 
 
@@ -42,7 +42,7 @@ def search_book(
 def consult_isbn(
     isbn: Optional[str] = Query(..., min_length=1, max_length=50)
 ):
-    h = {'Authorization': '47951_7a589993060668ed64758de54555018c'}
+    h = {'Authorization': os.environ.get('JONAS_ISBNDBKEY')}
     resp = requests.get(f"https://api2.isbndb.com/book/{isbn}", headers=h)
     return resp.json()
 

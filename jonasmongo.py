@@ -6,11 +6,12 @@ from datetime import datetime
 from bson import ObjectId
 from pymongo import MongoClient
 from models import JonasBook
+import os
 
 
 class JonasMongo:
     def __init__(self):
-        mongodb_client = MongoClient("mongodb://jonas:jonas123@localhost:27017/jonas?authSource=admin")
+        mongodb_client = MongoClient(os.environ.get('JONAS_MONGO'))
         self.db = mongodb_client.db
 
     def upsert_book(self, book_request: JonasBook):
@@ -26,17 +27,15 @@ class JonasMongo:
         else:
             self.db.shelf.update_one({"number": book_request.number}, {"$push": {'books': book}})
 
-    def search_book(self, title, author):
-        if len(title) == 0 and len(author) == 0:
+    def search_book(self, q):
+        if len(q) == 0:
             return []
-        rgx1 = re.compile(f'.*{title}.*', re.IGNORECASE)  # compile the regex
-        rgx2 = re.compile(f'.*{author}.*', re.IGNORECASE)
+        rgx = re.compile(f'.*{q}.*', re.IGNORECASE)
         books = self.db.shelf.aggregate(
-            [{"$unwind": "$books"}, {"$match": {"$and": [{"books.title": rgx1}, {"books.author": rgx2}]}},
+            [{"$unwind": "$books"}, {"$match": {"$or": [{"books.title": rgx}, {"books.author": rgx}]}},
              {'$project': {'id': '$books.uuid', 'number': '$number', "title": "$books.title",
                            "author": "$books.author", "level": "$books.level", "section": "$books.section"}}])
         books = JSONEncoder().encode(list(books))
-        print(books)
         return json.loads(books)
 
 
