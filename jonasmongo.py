@@ -27,14 +27,29 @@ class JonasMongo:
         else:
             self.db.shelf.update_one({"number": book_request.number}, {"$push": {'books': book}})
 
-    def search_book(self, q):
+    def update_book(self, book_request: JonasBook):
+        self.db.shelf.update_one(
+            {"books.uuid": book_request.uuid},
+            {"$set": {"books.$[row].level": book_request.level,
+                      "books.$[row].section": book_request.section,
+                      "books.$[row].sold": book_request.sold}},
+            array_filters=[{"row.uuid": book_request.uuid}])
+
+    def search_book(self, q, sold):
         if len(q) == 0:
             return []
         rgx = re.compile(f'.*{q}.*', re.IGNORECASE)
         books = self.db.shelf.aggregate(
-            [{"$unwind": "$books"}, {"$match": {"$or": [{"books.title": rgx}, {"books.author": rgx}]}},
+            [{"$unwind": "$books"},
+             {"$match": {"$and": [{"$or": [
+                 {"books.title": rgx},
+                 {"books.author": rgx}
+             ]},
+                 {"books.sold": sold}
+             ]}},
              {'$project': {'id': '$books.uuid', 'number': '$number', "title": "$books.title",
-                           "author": "$books.author", "level": "$books.level", "section": "$books.section"}}])
+                           "author": "$books.author", "level": "$books.level", "section": "$books.section",
+                           "sold": "$books.sold"}}])
         books = JSONEncoder().encode(list(books))
         return json.loads(books)
 

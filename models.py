@@ -3,6 +3,7 @@ from typing import Dict
 
 
 class JonasBook(BaseModel):
+    uuid: str
     number: int
     title: str
     author: str

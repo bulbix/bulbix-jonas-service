@@ -25,23 +25,30 @@ app.add_middleware(
 jonasmongo = JonasMongo()
 
 
-@app.post("/add_book")
+@app.put("/add_book")
 def add_book(book: JonasBook = Body(...)):
     jonasmongo.upsert_book(book)
     return {"message": "success"}
 
 
+@app.post("/update_book")
+def add_book(book: JonasBook = Body(...)):
+    jonasmongo.update_book(book)
+    return {"message": "success"}
+
+
 @app.get("/search_book")
 def search_book(
-    q: Optional[str] = Query(None, max_length=50)
+        q: Optional[str] = Query(None, max_length=50),
+        sold: Optional[bool] = Query(None)
 ):
-    result = jonasmongo.search_book(q)
+    result = jonasmongo.search_book(q, sold)
     return result
 
 
 @app.get("/consult_isbn")
 def consult_isbn(
-    isbn: Optional[str] = Query(..., min_length=1, max_length=50)
+        isbn: Optional[str] = Query(..., min_length=1, max_length=50)
 ):
     h = {'Authorization': os.environ.get('JONAS_ISBNDBKEY')}
     resp = requests.get(f"https://api2.isbndb.com/book/{isbn}", headers=h)
